@@ -5,12 +5,11 @@ import java.net.UnknownHostException;
 
 import global.FinalVariable;
 public class Client {
-	
 	private static String ip = FinalVariable.SERVERHOST;
 	
-	private long id = 0;
-	private long roomId = 0;
-	private String userName = "";
+	private long userId = 0;
+	private long roomId= 0;
+	
 	private Socket socket = null;
 	
 	public Client() throws UnknownHostException, IOException
@@ -18,9 +17,9 @@ public class Client {
 		socket = new Socket(ip, FinalVariable.PORT);
 	}
 	
-	public long getId()
+	public long getUserId()
 	{
-		return id;
+		return userId;
 	}
 
 	public long getRoomId()
@@ -28,20 +27,18 @@ public class Client {
 		return roomId;
 	}
 	
-	public void setRoomId(long roomId)
-	{
-		this.roomId = roomId;
-	}
-	
-	public String getUserName()
-	{
-		return userName;
-	}
-	
 	public Socket getSocket()
 	{
 		return socket;
 	}
-	
 
+	public void setUserId(long userId)
+	{
+		this.userId = userId;
+	}
+	
+	public void setRoomId(long roomId)
+	{
+		this.roomId = roomId;
+	}
 }

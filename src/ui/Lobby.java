@@ -8,11 +8,13 @@ import javax.swing.border.EmptyBorder;
 import client.Client;
 import client.ClientThread;
 import controller.ControllerTextArea;
-import controller.Delegate;
+import controller.ViewControllerSingleton;
+import utils.Delegate;
+import utils.Utils;
 
 import javax.swing.JButton;
+
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -40,6 +42,7 @@ public class Lobby extends JFrame {
 					frame.SetEventLisnter();
 					frame.setVisible(true);
 				
+					clientThread.login();
 					
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -52,6 +55,7 @@ public class Lobby extends JFrame {
 	private JTextArea textArea = null;
 	private JTextArea textAreaInput = null;
 	private JButton btnCreateRoom = null;
+	JButton btnInsertRoom = null;
 	
 	public JTextArea GetTextArea()
 	{
@@ -78,11 +82,7 @@ public class Lobby extends JFrame {
 		contentPane.setLayout(null);
 		contentPane.add(btnCreateRoom);
 		
-		JButton btnInsertRoom = new JButton("Insert room");
-		btnInsertRoom.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-			}
-		});
+		btnInsertRoom = new JButton("Insert room");
 		btnInsertRoom.setBounds(677, 396, 117, 76);
 		contentPane.add(btnInsertRoom);
 		
@@ -113,11 +113,29 @@ public class Lobby extends JFrame {
 		// input
 		textAreaInput = new JTextArea();
 		scrollPane_2.setViewportView(textAreaInput);
+		
 	}
 	
-	// call after init clientThread
+	// call after initialize clientThread
 	private void SetEventLisnter() 
 	{
+		btnInsertRoom.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				new PopupInput("방번호를 입력하세요(1~)", new Delegate() {
+					@Override
+					public void doDelegate(Object o) {
+						String inputText = o.toString();
+					
+						if(!Utils.isNumeric(inputText)) {	
+							ViewControllerSingleton.getInstance().createPopupConfirm("숫자만 입력하세요 : 1 ~ " + Long.MAX_VALUE, null);
+							return;
+						}
+						clientThread.insertRoom(Long.parseLong(inputText));
+					}
+				});
+			}
+		});
+		
 		btnCreateRoom.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				clientThread.createRoom();
@@ -126,7 +144,7 @@ public class Lobby extends JFrame {
 		
 		textAreaInput.addKeyListener(new ControllerTextArea(new Delegate() {
 			@Override
-			public void doDelegate() {
+			public void doDelegate(Object o) {
 				
 				String inputText = textAreaInput.getText();
 				if(!inputText.isEmpty())

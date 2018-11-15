@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.file.attribute.UserPrincipalLookupService;
 
 import global.FinalVariable;
 
@@ -19,23 +20,19 @@ public class ServerThread implements Runnable {
 	
 	boolean isStop = false;
 	
-	public ServerThread(Socket socket, Server server)
-	{
+	public ServerThread(Socket socket, Server server) {
 		this.server = server;
 		this.socket = socket;
 	}
 	
-	public synchronized void run()
-	{
+	public synchronized void run() {
 		try {
 			bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			printWriter = new PrintWriter(socket.getOutputStream(), true);
 			String recievedMessage = null;
 
-			while(!isStop)
-			{
-				if( bufferedReader.ready())
-				{
+			while(!isStop) {
+				if( bufferedReader.ready()) {
 					recievedMessage = bufferedReader.readLine();
 					String[] protocol = recievedMessage.split(FinalVariable.DELIMITER);
 					doByProtocol(protocol, recievedMessage);
@@ -47,20 +44,28 @@ public class ServerThread implements Runnable {
 		}
 	}
 	
-	private void doByProtocol(String[] protocol, String message)
-	{
+	private void doByProtocol(String[] protocol, String message) {	
+		long userId = Long.parseLong(protocol[FinalVariable.USERIDINDEX]);
+		long prevRoomId = Long.parseLong(protocol[FinalVariable.PREVROOMINDEX]);
 		long roomId = Long.parseLong(protocol[FinalVariable.ROOMINDEX]);
-		long userId = Long.parseLong(protocol[FinalVariable.USERICINDEX]);
 		
 		try {
 			switch (Integer.parseInt(protocol[FinalVariable.INSTRUCTIONINDEX])) {
 			case FinalVariable.CREATEUSER:
 				System.out.println("CREATEUSER");
-				// do
+				createUser();
+				break;
+			case FinalVariable.LOGINUSER:
+				System.out.println("LOGINUSER");
+				loginUser();
 				break;
 			case FinalVariable.CREATERROOM:
 				System.out.println("CREATERROOM");
 				createRoom(roomId, userId);
+				break;
+			case FinalVariable.INSERTROOM:
+				System.out.println("INSERTROOM");
+				insertRoom(prevRoomId, roomId, userId);
 				break;
 			case FinalVariable.SENDMESSAGE:
 				System.out.println("SENDMESSAGE");
@@ -81,43 +86,62 @@ public class ServerThread implements Runnable {
 		}
 	}
 	
-	private void createRoom(long roomId, long userId)
-	{
-		long newRoomId = server.createRoom(roomId, userId, this);
-		sendMessage(formatting(FinalVariable.CREATERROOM, "", newRoomId));
+	private void createUser() {
+		long userId = server.createUser();
+		sendMessage(formatting(FinalVariable.LOGINUSER, userId, 0, 0, ""));
 	}
 	
-	private void broadCastInRoom(long roomId, String message)
-	{
+	private void loginUser() {
+		long userId = server.loginUser();
+		sendMessage(formatting(FinalVariable.LOGINUSER, userId, 0, 0, ""));
+	}
+	 
+	private void createRoom(long roomId, long userId) {
+		long newRoomId = server.createRoom(roomId, userId, this);
+		sendMessage(formatting(FinalVariable.CREATERROOM, userId, 0, newRoomId, ""));
+	}
+	
+	private void insertRoom(long prevRoomId, long roomId, long userId) {
+		long newRoomId = server.insertRoom(prevRoomId, roomId, userId, this);
+		sendMessage(formatting(FinalVariable.INSERTROOM, userId, prevRoomId, newRoomId, ""));
+	}
+	
+	private void broadCastInRoom(long roomId, String message) {
 		server.broadCastingInRoom(roomId, message);
 	}
 	
-	public void sendMessage(String message){
+	public void sendMessage(String message) {
 		printWriter.println(message);
 	}
 	
-	public void start()
-	{
+	public void start() {
 		Thread thread = new Thread(this);
 		thread.start();
 	}
 	
-	public void stop() throws IOException
-	{
+	public void stop() throws IOException {
 		isStop = true;
 		socket.close();
 	}
 	
-	private String formatting(int instuction, String message, long newRoomId)
-	{
+	private String formatting(int instuction, long userId, long prevRoomId, long roomId, String message) {
 		StringBuilder stringbuilder = new StringBuilder();
 		String[] protocols = new String[FinalVariable.PROTOCOLLENGH];
 		
+		protocols[FinalVariable.INSTRUCTIONINDEX] = String.valueOf(instuction);
+		protocols[FinalVariable.USERIDINDEX] = String.valueOf(userId);
+		protocols[FinalVariable.PREVROOMINDEX] = String.valueOf(prevRoomId);
+		protocols[FinalVariable.ROOMINDEX] = String.valueOf(roomId);
+		protocols[FinalVariable.MESSAGEINDEX] = message;
+		
 		switch (instuction) {
-		case FinalVariable.CREATERROOM:
-			protocols[FinalVariable.ROOMINDEX] = String.valueOf(newRoomId);
-			break;
 		case FinalVariable.CREATEUSER:
+			break;
+		case FinalVariable.LOGINUSER:
+			break;
+		case FinalVariable.CREATERROOM:
+			break;
+		case FinalVariable.INSERTROOM:
 			break;
 		case FinalVariable.SENDMESSAGE:
 			break;
@@ -127,11 +151,7 @@ public class ServerThread implements Runnable {
 			break;
 		}
 		
-		protocols[FinalVariable.INSTRUCTIONINDEX] = String.valueOf(instuction);
-		protocols[FinalVariable.MESSAGEINDEX] = message;
-		
-		for(int i=0; i<FinalVariable.PROTOCOLLENGH; i++)
-		{
+		for(int i=0; i<FinalVariable.PROTOCOLLENGH; i++) {
 			stringbuilder.append(protocols[i]);
 			if(i < FinalVariable.PROTOCOLLENGH -1)
 				stringbuilder.append(FinalVariable.DELIMITER);
@@ -140,4 +160,5 @@ public class ServerThread implements Runnable {
 		System.out.println(stringbuilder.toString());
 		return stringbuilder.toString(); 
 	}
+	
 }

@@ -2,11 +2,8 @@ package server;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import global.FinalVariable;
 
@@ -27,7 +24,6 @@ public class Server {
 	boolean isStop = false;
 
 	public Server(int port) throws IOException {
-
 		serverThreadMaps = new HashMap<Long, HashMap<Long, ServerThread>>();
 		serverSocket = new ServerSocket(port);
 	}
@@ -77,40 +73,54 @@ public class Server {
 		}
 	}
 
-	public synchronized void unRegisterServerThread(long roomId, long userId)
-	{
-		if (serverThreadMaps.containsKey(roomId) && 
-				serverThreadMaps.get(roomId).containsKey(userId)) 
+	public synchronized void unRegisterServerThread(long roomId, long userId) {
+		if (serverThreadMaps.containsKey(roomId) && serverThreadMaps.get(roomId).containsKey(userId)) 
 			serverThreadMaps.get(roomId).remove(userId);
-		
 	}
-	public synchronized void registerServerThread(long roomId, long userId, ServerThread serverThread)
-	{
-		if(!serverThreadMaps.containsKey(roomId))
-		{
+	
+	public synchronized void registerServerThread(long roomId, long userId, ServerThread serverThread) {
+		if(!serverThreadMaps.containsKey(roomId)) 
 			serverThreadMaps.put(roomId, new HashMap<Long, ServerThread>());
-		}
+		
 		
 		serverThreadMaps.get(roomId).put(userId, serverThread);
 	}
+	
 	/*
 	 * Thread Safe
 	 */
-	public long createRoom(long prevRoomId, long userId, ServerThread serverThread)
-	{
+	public long createRoom(long prevRoomId, long userId, ServerThread serverThread) {
 		long newRoomId = autoIncreasedRoomId.getAndIncrement();
+		if(newRoomId == Long.MAX_VALUE) 
+			return FinalVariable.FAILEDCREATEROOM;
+		
 		unRegisterServerThread(prevRoomId, userId);
 		registerServerThread(newRoomId, userId, serverThread);
 		System.out.println("create room : " + newRoomId + "by user id(" + userId + ")");
 		return newRoomId;
 	}
-
-	public long CreateUser(String userName) {
-		long userId = autoIncreasedUserId.getAndIncrement();
-		// save id and user Name
-		return userId;
+	
+	public synchronized long insertRoom(long prevRoomId, long roomId, long userId, ServerThread serverThread) {
+		if(serverThreadMaps.containsKey(roomId)) {
+			unRegisterServerThread(prevRoomId, userId);
+			registerServerThread(roomId, userId, serverThread);
+			return roomId;
+		}
+		return FinalVariable.FAILEDINSERTROOM;
+	}
+	
+	public long createUser() {
+		long newUserId = autoIncreasedUserId.getAndIncrement();
+		if(newUserId == Long.MAX_VALUE) 
+			return FinalVariable.FAILEDCREATEUSER;
+		
+		return newUserId;
 	}
 
+	public long loginUser() {
+		return createUser();
+	}
+	
 	public static void main(String[] args) throws IOException {
 		new Server(FinalVariable.PORT).start();
 	}
