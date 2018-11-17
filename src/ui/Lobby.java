@@ -9,7 +9,6 @@ import client.Client;
 import client.ClientThread;
 import controller.ControllerTextArea;
 import controller.ViewControllerSingleton;
-import global.FinalVariable;
 import utils.Delegate;
 import utils.Utils;
 
@@ -114,6 +113,7 @@ public class Lobby extends JFrame {
 		// input
 		textAreaInput = new JTextArea();
 		scrollPane_2.setViewportView(textAreaInput);
+		
 	}
 	
 	// call after initialize clientThread
@@ -146,10 +146,10 @@ public class Lobby extends JFrame {
 			@Override
 			public void doDelegate(Object o) {
 				
-				String inputText = textAreaInput.getText().trim();
-				if(inputText != null && inputText.length() > 0)
+				String inputText = textAreaInput.getText();
+				if(!inputText.isEmpty())
 				{
-					clientThread.chatMessage(inputText.replaceAll("\n", FinalVariable.LINEDELEMITER));
+					clientThread.chatMessage(inputText.trim());
 				}
 				textAreaInput.setText("");
 			}

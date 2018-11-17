@@ -8,7 +8,8 @@ import utils.Delegate;
 public class ControllerTextArea implements KeyListener{
 	private Delegate delegate = null;
 	
-	public ControllerTextArea(Delegate delegate) {
+	public ControllerTextArea(Delegate delegate)
+	{
 		this.delegate = delegate;
 	}
 
