@@ -10,6 +10,7 @@ import controller.ViewControllerSingleton;
 import global.FinalVariable;
 import ui.Lobby;
 import utils.Delegate;
+import utils.Utils;
 
 public class ClientThread extends Thread{
 
@@ -36,8 +37,7 @@ public class ClientThread extends Thread{
 			while(!isStop) {
 				if(bufferedReader.ready()) {
 					recievedMessage = bufferedReader.readLine();
-					String[] protocol = recievedMessage.split(FinalVariable.DELIMITER);
-					doByProtocol(protocol, recievedMessage);
+					doByProtocol(recievedMessage);
 					
 					//TODO delete
 					System.out.println("client recieved message : " + recievedMessage);
@@ -48,14 +48,14 @@ public class ClientThread extends Thread{
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		
 	}
 	
-	private void doByProtocol(String[] protocol, String message) {
-		long roomId = Long.parseLong(protocol[FinalVariable.ROOMINDEX]);
-		long userId = Long.parseLong(protocol[FinalVariable.USERIDINDEX]);
-		
+	private void doByProtocol(String message) {	
 		try {
+			String[] protocol = message.split(FinalVariable.DELIMITER);
+			long userId = Long.parseLong(protocol[FinalVariable.USERIDINDEX]);
+			long roomId = Long.parseLong(protocol[FinalVariable.ROOMINDEX]);
+			
 			switch (Integer.parseInt(protocol[FinalVariable.INSTRUCTIONINDEX])) {
 			case FinalVariable.CREATEUSER:
 				System.out.println("CREATEUSER handler");
@@ -75,11 +75,16 @@ public class ClientThread extends Thread{
 				break;
 			case FinalVariable.SENDMESSAGE:
 				System.out.println("SENDMESSAGE handler");
-				sendMessageHandler(message);
+				sendMessageHandler(Utils.formattingView(protocol));
 				break;
 			case FinalVariable.GETROOMLIST:
 				System.out.println("GETROOMLIST handler");
 				break;
+			case FinalVariable.GETROOMHISTORY:
+				System.out.println("GETROOMHISTORY handler");
+				getRoomHistoryHandler(Utils.formattingView(protocol));
+				break;
+			
 	
 			default:
 				break;
@@ -126,66 +131,43 @@ public class ClientThread extends Thread{
 			return;
 		}
 		client.setRoomId(roomId);
+		client.setHistoryPage(0);
 		ViewControllerSingleton.getInstance().createPopupConfirm("방에 입장하였습니다..  (" + roomId + ")", null);
+		
+		getRoomHistory();
 	}
 	
 	private void sendMessageHandler(String message) {
 		ViewControllerSingleton.getInstance().appendInTextArea(lobby.GetTextArea(), message);
 	}
 	
+	public void getRoomHistoryHandler(String message) {
+		client.increaseHistoryPage();
+		ViewControllerSingleton.getInstance().appendInTextArea(lobby.GetTextArea(), message);
+	}
+	
+	
 	public void login() {
-		sendMessage(formatting(FinalVariable.LOGINUSER, 0, 0, ""));
+		sendMessage(Utils.formattingProtocol(FinalVariable.LOGINUSER, client.getUserId(), 0, client.getRoomId(), 0, null));
 	}
 	
 	public void createRoom() {
-		sendMessage(formatting(FinalVariable.CREATERROOM, 0, 0, ""));
+		sendMessage(Utils.formattingProtocol(FinalVariable.CREATERROOM, client.getUserId(), 0, client.getRoomId(), 0, null));
 	}
 	
 	public void insertRoom(long roomId) {
-		sendMessage(formatting(FinalVariable.INSERTROOM, 0, roomId, ""));
+		sendMessage(Utils.formattingProtocol(FinalVariable.INSERTROOM, client.getUserId(), client.getRoomId(), roomId, 0, null));
 	}
 	
 	public void chatMessage(String message) {
-		sendMessage(formatting(FinalVariable.SENDMESSAGE, 0, 0, message));
+		sendMessage(Utils.formattingProtocol(FinalVariable.SENDMESSAGE, client.getUserId(), 0, client.getRoomId(), 0, message));
+	}
+	
+	public void getRoomHistory() {
+		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY,client.getUserId(), 0, client.getRoomId(), client.getHistoryPage(), null));
 	}
 	
 	private void sendMessage(String message) {
 		prrintWriter.println(message);
-	}
-	
-	private String formatting(int instuction, long prevRoomId, long roomId, String message) {
-		StringBuilder stringbuilder = new StringBuilder();
-		String[] protocols = new String[FinalVariable.PROTOCOLLENGH];
-
-		protocols[FinalVariable.USERIDINDEX] = String.valueOf(client.getUserId());
-		protocols[FinalVariable.INSTRUCTIONINDEX] = String.valueOf(instuction);
-		protocols[FinalVariable.PREVROOMINDEX] = String.valueOf(client.getRoomId());
-		protocols[FinalVariable.ROOMINDEX] = String.valueOf(client.getRoomId());
-		protocols[FinalVariable.MESSAGEINDEX] = message;
-		
-		switch (instuction) {
-		case FinalVariable.CREATEUSER:
-			break;
-		case FinalVariable.LOGINUSER:
-			break;
-		case FinalVariable.CREATERROOM:
-			break;
-		case FinalVariable.INSERTROOM:
-			protocols[FinalVariable.ROOMINDEX] = String.valueOf(roomId);
-			break;
-		case FinalVariable.SENDMESSAGE:
-			break;
-		case FinalVariable.GETROOMLIST:
-			break;
-		default:
-			break;
-		}
-		
-		for(int i=0; i<FinalVariable.PROTOCOLLENGH; i++) {
-			stringbuilder.append(protocols[i]);
-			if(i < FinalVariable.PROTOCOLLENGH -1)
-				stringbuilder.append(FinalVariable.DELIMITER);
-		}
-		return stringbuilder.toString(); 
 	}
 }

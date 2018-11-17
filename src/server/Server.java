@@ -3,14 +3,20 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import global.FinalVariable;
+import utils.Utils;
 
 public class Server {
 
 	private Socket socket;
 	private ServerSocket serverSocket;
+	
+	private FileManager fileManager;
+	
+	public LinkedBlockingQueue<String> fileTastQueue = new LinkedBlockingQueue<String>();
 
 	// using CAS
 	// if not support in process, JVM implements by spin lock
@@ -24,11 +30,14 @@ public class Server {
 	boolean isStop = false;
 
 	public Server(int port) throws IOException {
-		serverThreadMaps = new HashMap<Long, HashMap<Long, ServerThread>>();
-		serverSocket = new ServerSocket(port);
+		this.serverThreadMaps = new HashMap<Long, HashMap<Long, ServerThread>>();
+		this.serverSocket = new ServerSocket(port);
 	}
 
 	public void start() {
+		fileManager = new FileManager(this);
+		fileManager.start();
+		
 		while (!isStop) {
 			// server ready
 			System.out.println("server ready...");
@@ -39,6 +48,7 @@ public class Server {
 				System.out.println("accept client..." + socket.getInetAddress());
 				ServerThread serverThread = new ServerThread(socket, this);
 				serverThread.start();
+			
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -61,9 +71,13 @@ public class Server {
 		return socket;
 	}
 
+	public void writeFile(String message, ServerThread serverThread){
+		serverThread.fileTaskRequest(message);
+	}
+	
 	// synchronized
 	// can use ReadWriteLock etc..
-	public synchronized void broadCastingInRoom(Long roomId, String message) {
+	public synchronized void broadCastingInRoom(long roomId, String message) {
 		if (serverThreadMaps.containsKey(roomId)) {
 			HashMap<Long, ServerThread> serverThreadMap = serverThreadMaps.get(roomId);
 			serverThreadMap.forEach((k, v) -> {
@@ -81,8 +95,7 @@ public class Server {
 	public synchronized void registerServerThread(long roomId, long userId, ServerThread serverThread) {
 		if(!serverThreadMaps.containsKey(roomId)) 
 			serverThreadMaps.put(roomId, new HashMap<Long, ServerThread>());
-		
-		
+
 		serverThreadMaps.get(roomId).put(userId, serverThread);
 	}
 	
@@ -100,13 +113,20 @@ public class Server {
 		return newRoomId;
 	}
 	
-	public synchronized long insertRoom(long prevRoomId, long roomId, long userId, ServerThread serverThread) {
+	public synchronized long insertRoom(long prevRoomId, long roomId, long userId, ServerThread serverThread, String message) {
 		if(serverThreadMaps.containsKey(roomId)) {
 			unRegisterServerThread(prevRoomId, userId);
 			registerServerThread(roomId, userId, serverThread);
 			return roomId;
 		}
 		return FinalVariable.FAILEDINSERTROOM;
+	}
+	
+	public synchronized void sendRoomHistory(long userId, long roomId, String message) {
+		if (serverThreadMaps.containsKey(roomId) && serverThreadMaps.get(roomId).containsKey(userId)) {
+			ServerThread serverThead = serverThreadMaps.get(roomId).get(userId);
+			serverThead.sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, userId, roomId, 0, 0, message));
+		}
 	}
 	
 	public long createUser() {
@@ -126,3 +146,4 @@ public class Server {
 	}
 
 }
+
