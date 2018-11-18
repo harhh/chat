@@ -16,14 +16,16 @@ import utils.Utils;
 import javax.swing.JButton;
 
 import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 import java.awt.event.ActionEvent;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.ScrollPaneLayout;
 
 public class Lobby extends JFrame {
-
-	private JPanel contentPane;
-
+	
 	private static Client client = null;
 	private static ClientThread clientThread = null;
 	
@@ -52,44 +54,59 @@ public class Lobby extends JFrame {
 		});
 	}
 
-
+	private JPanel contentPanel;
+	
 	private JTextArea textArea = null;
 	private JTextArea textAreaInput = null;
+	private JTextArea roomListextArea = null;
+	private JScrollPane scrollPane  = null;
 	private JButton btnCreateRoom = null;
-	JButton btnInsertRoom = null;
+	private JButton btnInsertRoom = null;
+	private JButton btnRefreshRoomList = null;
 	
-	public JTextArea GetTextArea()
-	{
-		return textArea;	
+	public JPanel getLobbyPanel() {
+		return this.contentPanel;
 	}
 	
-	public JTextArea GetTextAreaInput()
-	{
-		return textAreaInput;
+	public JTextArea getTextArea() {
+		return this.textArea;	
 	}
+	
+	public JTextArea getTextAreaInput() {
+		return this.textAreaInput;
+	}
+	
+	public JScrollPane getScrollPane() {
+		return this.scrollPane;
+	}
+	
+	public JTextArea getRoomListTextArea() {
+		return this.roomListextArea;
+	}
+	
 	/**
 	 * Create the frame.
 	 */
 	public Lobby() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 800, 500);
-		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(contentPane);
+		contentPanel = new JPanel();
+		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+		setContentPane(contentPanel);
 		
 		btnCreateRoom = new JButton("Create room");
 		btnCreateRoom.setBounds(551, 396, 117, 76);
 		
-		contentPane.setLayout(null);
-		contentPane.add(btnCreateRoom);
+		contentPanel.setLayout(null);
+		contentPanel.add(btnCreateRoom);
 		
 		btnInsertRoom = new JButton("Insert room");
 		btnInsertRoom.setBounds(677, 396, 117, 76);
-		contentPane.add(btnInsertRoom);
+		contentPanel.add(btnInsertRoom);
 		
-		JScrollPane scrollPane = new JScrollPane();
+		scrollPane = new JScrollPane();
 		scrollPane.setBounds(239, 6, 555, 326);
-		contentPane.add(scrollPane);
+		contentPanel.add(scrollPane);
 		
 		textArea = new JTextArea();
 		textArea.setEditable(false);
@@ -97,21 +114,21 @@ public class Lobby extends JFrame {
 		
 		JScrollPane scrollPane_1 = new JScrollPane();
 		scrollPane_1.setBounds(6, 6, 223, 386);
-		contentPane.add(scrollPane_1);
+		contentPanel.add(scrollPane_1);
 		
-		JButton btnNewButton = new JButton("Refrersh Room");
-		btnNewButton.setBounds(6, 396, 117, 76);
-		btnNewButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-			}
-		});
-		contentPane.add(btnNewButton);
+		roomListextArea = new JTextArea();
+		roomListextArea.setEditable(false);
+		scrollPane_1.setViewportView(roomListextArea);
+		
+		btnRefreshRoomList = new JButton("Refrersh Room");
+		btnRefreshRoomList.setBounds(6, 396, 117, 76);
+
+		contentPanel.add(btnRefreshRoomList);
 		
 		JScrollPane scrollPane_2 = new JScrollPane();
 		scrollPane_2.setBounds(239, 336, 555, 56);
-		contentPane.add(scrollPane_2);
-		
-		// input
+		contentPanel.add(scrollPane_2);
+
 		textAreaInput = new JTextArea();
 		scrollPane_2.setViewportView(textAreaInput);
 	}
@@ -121,18 +138,19 @@ public class Lobby extends JFrame {
 	{
 		btnInsertRoom.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				new PopupInput("방번호를 입력하세요(1~)", new Delegate() {
+				final PopupInput popupInput = new PopupInput("방번호를 입력하세요(1~)", new Delegate() {
 					@Override
 					public void doDelegate(Object o) {
 						String inputText = o.toString();
-					
 						if(!Utils.isNumeric(inputText)) {	
-							ViewControllerSingleton.getInstance().createPopupConfirm("숫자만 입력하세요 : 1 ~ " + Long.MAX_VALUE, null);
+							 ViewControllerSingleton.getInstance().createPopupConfirm("숫자만 입력하세요 : 1 ~ " + Long.MAX_VALUE, null, contentPanel);
 							return;
 						}
 						clientThread.insertRoom(Long.parseLong(inputText));
 					}
 				});
+				popupInput.setLocationRelativeTo(contentPanel);
+				popupInput.setVisible(true);
 			}
 		});
 		
@@ -154,5 +172,11 @@ public class Lobby extends JFrame {
 				textAreaInput.setText("");
 			}
 		}));
+		
+		btnRefreshRoomList.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				clientThread.getRoomList();
+			}
+		});
 	}
 }

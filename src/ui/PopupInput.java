@@ -64,8 +64,6 @@ public class PopupInput extends PopupBase {
 				});
 			}
 		}	
-		
-		setVisible(true);
 	}
 	
 }

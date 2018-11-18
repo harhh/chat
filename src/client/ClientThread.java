@@ -79,6 +79,7 @@ public class ClientThread extends Thread{
 				break;
 			case FinalVariable.GETROOMLIST:
 				System.out.println("GETROOMLIST handler");
+				getRoomListHandler(Utils.formattingView(protocol));
 				break;
 			case FinalVariable.GETROOMHISTORY:
 				System.out.println("GETROOMHISTORY handler");
@@ -98,9 +99,9 @@ public class ClientThread extends Thread{
 	
 	private void createUserHandler(long userId) {
 		if(userId == FinalVariable.FAILEDLOGINUSER) 
-			ViewControllerSingleton.getInstance().createPopupConfirm("가입에 실패하였습니다.", null);
+			ViewControllerSingleton.getInstance().createPopupConfirm("가입에 실패하였습니다.", null, lobby);
 		client.setUserId(userId);
-		ViewControllerSingleton.getInstance().createPopupConfirm("가입에 성공하였습니다.. (" + userId + ")", null);
+		ViewControllerSingleton.getInstance().createPopupConfirm("가입에 성공하였습니다.. (" + userId + ")", null, lobby);
 	}
 	
 	private void loginUserHandler(long userId) {
@@ -109,41 +110,50 @@ public class ClientThread extends Thread{
 				public void doDelegate(Object o) {
 					System.exit(0);
 				}
-			});
+			}, lobby);
 			return;
 		}
 		client.setUserId(userId);
-		ViewControllerSingleton.getInstance().createPopupConfirm("로그인하였습니다. (" + userId + ")", null);
+		ViewControllerSingleton.getInstance().createPopupConfirm("로그인하였습니다. (" + userId + ")", null, lobby);
+		
+		
 	}
 	
 	private void createRoomHandler(long roomId) {
 		if(roomId == FinalVariable.FAILEDCREATEROOM) {
-			ViewControllerSingleton.getInstance().createPopupConfirm("방을 생성하지 못했습니다.", null);
+			ViewControllerSingleton.getInstance().createPopupConfirm("방을 생성하지 못했습니다.", null, lobby);
 			return;
 		}
 		client.setRoomId(roomId);
-		ViewControllerSingleton.getInstance().createPopupConfirm("방을 생성하였습니다. (" + roomId + ")", null);
+		ViewControllerSingleton.getInstance().clearTextArea(lobby);
+		ViewControllerSingleton.getInstance().createPopupConfirm("방을 생성하였습니다. (" + roomId + ")", null, lobby);
 	}
 	
 	private void insertRoomHandler(long roomId) {
 		if(roomId == FinalVariable.FAILEDINSERTROOM) {
-			ViewControllerSingleton.getInstance().createPopupConfirm("방이 존재하지 않습니다. (" + roomId + ")", null);
+			ViewControllerSingleton.getInstance().createPopupConfirm("방이 존재하지 않습니다. (" + roomId + ")", null, lobby);
 			return;
 		}
 		client.setRoomId(roomId);
 		client.setHistoryPage(0);
-		ViewControllerSingleton.getInstance().createPopupConfirm("방에 입장하였습니다..  (" + roomId + ")", null);
+		
+		ViewControllerSingleton.getInstance().createPopupConfirm("방에 입장하였습니다..  (" + roomId + ")", null, lobby);
+		ViewControllerSingleton.getInstance().clearTextArea(lobby);
 		
 		getRoomHistory();
 	}
 	
 	private void sendMessageHandler(String message) {
-		ViewControllerSingleton.getInstance().appendInTextArea(lobby.GetTextArea(), message);
+		ViewControllerSingleton.getInstance().appendInTextArea(lobby, message);
+	}
+	
+	public void getRoomListHandler(String message) {
+		ViewControllerSingleton.getInstance().refreshRoomList(lobby, message);
 	}
 	
 	public void getRoomHistoryHandler(String message) {
 		client.increaseHistoryPage();
-		ViewControllerSingleton.getInstance().appendInTextArea(lobby.GetTextArea(), message);
+		ViewControllerSingleton.getInstance().appendInTextArea(lobby, message);
 	}
 	
 	
@@ -163,9 +173,14 @@ public class ClientThread extends Thread{
 		sendMessage(Utils.formattingProtocol(FinalVariable.SENDMESSAGE, client.getUserId(), 0, client.getRoomId(), 0, message));
 	}
 	
-	public void getRoomHistory() {
-		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY,client.getUserId(), 0, client.getRoomId(), client.getHistoryPage(), null));
+	public void getRoomList() {
+		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMLIST, client.getUserId(), 0, client.getRoomId(), 0, null));
 	}
+	
+	public void getRoomHistory() {
+		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, client.getUserId(), 0, client.getRoomId(), client.getHistoryPage(), null));
+	}
+	
 	
 	private void sendMessage(String message) {
 		prrintWriter.println(message);

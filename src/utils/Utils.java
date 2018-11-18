@@ -59,10 +59,16 @@ public class Utils {
 				stringBuilder.append(" : " );
 				break;
 			case FinalVariable.GETROOMLIST:
-				break;
+				long roomList = Long.parseLong(message);
+				for(int i=1; i<=roomList; i++) {
+					stringBuilder.append(i);
+					stringBuilder.append("\n");
+				}
+				return stringBuilder.toString();
 			case FinalVariable.GETROOMHISTORY:
 				break;
 		}
+		
 		stringBuilder.append(message.replaceAll(FinalVariable.LINEDELEMITER, "\n"));
 		
 		return stringBuilder.toString();

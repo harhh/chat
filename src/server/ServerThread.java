@@ -68,11 +68,11 @@ public class ServerThread implements Runnable {
 				break;
 			case FinalVariable.LOGINUSER:
 				System.out.println("LOGINUSER");
-				loginUser();
+				loginUser(this);
 				break;
 			case FinalVariable.CREATERROOM:
 				System.out.println("CREATERROOM");
-				createRoom(roomId, userId);
+				createRoom(roomId, userId, message);
 				break;
 			case FinalVariable.INSERTROOM:
 				System.out.println("INSERTROOM");
@@ -84,11 +84,11 @@ public class ServerThread implements Runnable {
 				break;
 			case FinalVariable.GETROOMLIST:
 				System.out.println("GETROOMLIST");
-				// do
+				getRoomList(message);
 				break;
 			case FinalVariable.GETROOMHISTORY:
 				System.out.println("GETROOMHISTORY");
-				fileTaskRequest(message);
+				getRoomHistory(message);
 				break;
 	
 			default:
@@ -106,14 +106,16 @@ public class ServerThread implements Runnable {
 		sendMessage(Utils.formattingProtocol(FinalVariable.LOGINUSER, userId, 0, 0, 0, null));
 	}
 	
-	private void loginUser() {
-		long userId = server.loginUser();
+	private void loginUser(ServerThread serverThread) {
+		long userId = server.loginUser(serverThread);
 		sendMessage(Utils.formattingProtocol(FinalVariable.LOGINUSER, userId, 0, 0, 0, null));
 	}
 	 
-	private void createRoom(long roomId, long userId) {
+	private void createRoom(long roomId, long userId, String message) {
 		long newRoomId = server.createRoom(roomId, userId, this);
-		sendMessage(Utils.formattingProtocol(FinalVariable.CREATERROOM, userId, 0, newRoomId, 0, null));
+		String newProtocol = Utils.formattingProtocol(FinalVariable.CREATERROOM, userId, 0, newRoomId, 0, null);
+		sendMessage(newProtocol);
+		fileTaskRequest(newProtocol);
 	}
 	
 	private void insertRoom(long prevRoomId, long roomId, long userId, String message) {
@@ -124,6 +126,14 @@ public class ServerThread implements Runnable {
 	private void broadCastInRoom(long roomId, String message) {
 		server.writeFile(message, this);
 		server.broadCastingInRoom(roomId, message);
+	}
+	
+	private void getRoomList(String message) {
+		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMLIST, 0, 0, 0, 0, String.valueOf(server.autoIncreasedRoomId)));
+	}
+	
+	private void getRoomHistory(String message) {
+		fileTaskRequest(message);
 	}
 	
 	public void fileTaskRequest(String message) {

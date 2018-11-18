@@ -58,6 +58,5 @@ public class PopupConfirm extends PopupBase {
 		}
 		
 		textArea.setText(description);
-		setVisible(true);
 	}
 }

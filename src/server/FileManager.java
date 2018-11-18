@@ -1,5 +1,6 @@
 package server;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -14,11 +15,13 @@ public class FileManager implements Runnable {
 	private String filePath = null; 
 	private Server server;
 	
+	private boolean isLoadedRoomCount  = false;
+	
 	LinkedHashSet<Long> leastRecentlyUsedSet = new LinkedHashSet<Long>();
 	HashMap<Long, RandomAccessFile> randomAccessFileMap = new HashMap<Long, RandomAccessFile>();
+	RandomAccessFile randomAccessManageFile = null;
 	
 	public FileManager(Server server) {
-
 		this.server = server;
 		this.leastRecentlyUsedSet = new LinkedHashSet<Long>();
 		this.filePath = System.getProperty("user.dir");
@@ -67,18 +70,18 @@ public class FileManager implements Runnable {
 			case FinalVariable.LOGINUSER:
 				break;
 			case FinalVariable.CREATERROOM:
+				writeRoomCount(roomId);
 				break;
 			case FinalVariable.INSERTROOM:
 				break;
 			case FinalVariable.SENDMESSAGE:
-				fileWrite(roomId, Utils.formattingUserMessage(instruction, userId, userSendedMessage));
+				sendMessage(roomId, Utils.formattingUserMessage(instruction, userId, userSendedMessage));
 				break;
 			case FinalVariable.GETROOMLIST:
 				break;
 			case FinalVariable.GETROOMHISTORY:
-				fileRead(userId, roomId, roomHistoryPage);
+				getReadHistory(userId, roomId, roomHistoryPage);
 				break;
-	
 			default:
 				break;
 			}
@@ -122,7 +125,7 @@ public class FileManager implements Runnable {
 		keepStream(roomId, randomAccessFile);
 	}
 	
-	private void fileRead(long userId, long roomId, int page) {
+	private void getReadHistory(long userId, long roomId, int page) {
 		RandomAccessFile randomAccessFile = null;
 		try {
 			if(!leastRecentlyUsedSet.contains(roomId)) 
@@ -156,7 +159,7 @@ public class FileManager implements Runnable {
 		}
 	}
 	
-	private void fileWrite(long roomId, String message) {
+	private void sendMessage(long roomId, String message) {
 		RandomAccessFile randomAccessFile = null;
 		try {
 			if(!leastRecentlyUsedSet.contains(roomId)) {
@@ -175,18 +178,62 @@ public class FileManager implements Runnable {
 		}
 	}
 	
-//	public long getRoomCount()
-//	{
-//		String filePath = getManageFilePath();
-//		BufferedReader bufferedReader = new BufferedReader(new FileReader(filePath));
-//		insertFileStream(roomId, bufferedReader, printWriter);
-//	}
+	public void setRoomCount() {
+		server.autoIncreaseRoomId(getRoomCount());
+	}
 	
-//	private String getManageFilePath()
-//	{
-//		return filePath + "/manage.txt";
-//	}
-//	
+	private long getRoomCount() {
+		long roomCount = 0;
+		if(!isLoadedRoomCount) {
+			try {
+				File manageFile = new File(getManageFilePath());
+				if(!manageFile.exists()) {
+					manageFile.createNewFile();
+					writeRoomCount(0);
+				} else {
+					roomCount = Long.parseLong(readRoomCount());
+				}
+			} catch (IOException e) {
+			}			
+		}
+		
+		isLoadedRoomCount = true;
+		return roomCount;
+	}
+	
+	private String readRoomCount() {
+		try {
+			if(randomAccessManageFile == null) {
+				randomAccessManageFile = new RandomAccessFile(getManageFilePath(), "rw");
+			}
+			randomAccessManageFile.seek(0);
+			return randomAccessManageFile.readLine().trim();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+	
+	private void writeRoomCount(long roomCount) {
+		try {
+			if(randomAccessManageFile == null) {
+				randomAccessManageFile = new RandomAccessFile(getManageFilePath(), "rw");
+			}
+			randomAccessManageFile.seek(0);
+			randomAccessManageFile.writeBytes(String.valueOf(roomCount) + "\n");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private String getManageFilePath() {
+		return filePath + "/manage.txt";
+	}
+	
 	private String getFilePath(long roomId) {
 		return filePath + "/" + String.valueOf(roomId) + ".txt";	
 	}

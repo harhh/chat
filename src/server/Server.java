@@ -37,6 +37,7 @@ public class Server {
 	public void start() {
 		fileManager = new FileManager(this);
 		fileManager.start();
+		fileManager.setRoomCount();
 		
 		while (!isStop) {
 			// server ready
@@ -48,7 +49,6 @@ public class Server {
 				System.out.println("accept client..." + socket.getInetAddress());
 				ServerThread serverThread = new ServerThread(socket, this);
 				serverThread.start();
-			
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -69,6 +69,10 @@ public class Server {
 
 	public Socket getSocket() {
 		return socket;
+	}
+
+	public void autoIncreaseRoomId(long roomCount) {
+		autoIncreasedRoomId.set(roomCount);
 	}
 
 	public void writeFile(String message, ServerThread serverThread){
@@ -103,7 +107,7 @@ public class Server {
 	 * Thread Safe
 	 */
 	public long createRoom(long prevRoomId, long userId, ServerThread serverThread) {
-		long newRoomId = autoIncreasedRoomId.getAndIncrement();
+		long newRoomId = autoIncreasedRoomId.incrementAndGet();
 		if(newRoomId == Long.MAX_VALUE) 
 			return FinalVariable.FAILEDCREATEROOM;
 		
@@ -114,7 +118,7 @@ public class Server {
 	}
 	
 	public synchronized long insertRoom(long prevRoomId, long roomId, long userId, ServerThread serverThread, String message) {
-		if(serverThreadMaps.containsKey(roomId)) {
+		if(roomId <= autoIncreasedRoomId.get()) {
 			unRegisterServerThread(prevRoomId, userId);
 			registerServerThread(roomId, userId, serverThread);
 			return roomId;
@@ -129,16 +133,28 @@ public class Server {
 		}
 	}
 	
+	public synchronized void sendRoomCount(long userId, long roomId, String message) {
+		System.out.println("sendRoomCount:");
+		if (serverThreadMaps.containsKey(roomId) && serverThreadMaps.get(roomId).containsKey(userId)) {
+			System.out.println("sendRoomCount:2");
+			ServerThread serverThead = serverThreadMaps.get(roomId).get(userId);
+			serverThead.sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMLIST, userId, roomId, 0, 0, message));
+		}
+	}
+	
 	public long createUser() {
-		long newUserId = autoIncreasedUserId.getAndIncrement();
+		long newUserId = autoIncreasedUserId.incrementAndGet();
 		if(newUserId == Long.MAX_VALUE) 
 			return FinalVariable.FAILEDCREATEUSER;
 		
 		return newUserId;
 	}
 
-	public long loginUser() {
-		return createUser();
+	public synchronized long loginUser(ServerThread serverThread) {
+		long userId = createUser();
+		// 대기열 진입
+		registerServerThread(0, userId, serverThread);
+		return userId;
 	}
 	
 	public static void main(String[] args) throws IOException {

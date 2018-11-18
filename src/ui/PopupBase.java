@@ -1,5 +1,7 @@
 package ui;
 
+import java.awt.Component;
+
 import javax.swing.JDialog;
 
 public class PopupBase extends JDialog {
