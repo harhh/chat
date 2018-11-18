@@ -30,9 +30,9 @@ public class FinalVariable {
 	public static final int MESSAGEINDEX = 5;
 	public static final int PROTOCOLLENGH = 6;
 	
-	public static final String LINEDELEMITER = "/";
-	
+	public static final String LINEDELEMITER = "-";
+	public static final String UTFLINEDELEMITER = System.getProperty("line.separator");
 	// server side variables
 	public static final int MAXSIZEFILESTREAM = 100;	
-	public static final int BYTESPERPAGE = 500;
+	public static final int LINEPERPAGE = 20;
 }

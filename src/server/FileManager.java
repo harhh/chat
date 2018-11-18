@@ -1,11 +1,19 @@
 package server;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import global.FinalVariable;
 import utils.Utils;
@@ -18,7 +26,7 @@ public class FileManager implements Runnable {
 	private boolean isLoadedRoomCount  = false;
 	
 	LinkedHashSet<Long> leastRecentlyUsedSet = new LinkedHashSet<Long>();
-	HashMap<Long, RandomAccessFile> randomAccessFileMap = new HashMap<Long, RandomAccessFile>();
+	HashMap<Long, PrintWriter> printWriterMap = new HashMap<Long, PrintWriter>();
 	RandomAccessFile randomAccessManageFile = null;
 	
 	public FileManager(Server server) {
@@ -38,7 +46,6 @@ public class FileManager implements Runnable {
 	
 	public synchronized void run() {
 		try {
-			//road File
 			System.out.println("file task start");
 			while(true)
 			{
@@ -46,8 +53,7 @@ public class FileManager implements Runnable {
 				{
 					String task = server.fileTastQueue.poll();
 					System.out.println("file task" + task);
-					String[] protocol = task.split(FinalVariable.DELIMITER); 
-					doByProtocol(protocol);
+					doByProtocol(task);
 				}
 			}			
 		} catch (Exception e) {
@@ -55,36 +61,38 @@ public class FileManager implements Runnable {
 		}
 	}
 	
-	private void doByProtocol(String[] protocol) {
+	private void doByProtocol(String task) {
 		try {
+			String[] protocol = task.split(FinalVariable.DELIMITER); 
+			
 			int instruction = Integer.parseInt(protocol[FinalVariable.INSTRUCTIONINDEX]);
 			long userId = Long.parseLong(protocol[FinalVariable.USERIDINDEX]);
 //			long prevRoomId = Long.parseLong(protocol[FinalVariable.PREVROOMINDEX]);
 			long roomId = Long.parseLong(protocol[FinalVariable.ROOMINDEX]);
-			int roomHistoryPage = Integer.parseInt(protocol[FinalVariable.ROOMHISTORYPAGEINDEX]);
+			long roomHistoryPage = Integer.parseInt(protocol[FinalVariable.ROOMHISTORYPAGEINDEX]);
 			String userSendedMessage = protocol[FinalVariable.MESSAGEINDEX];
 			
 			switch (instruction) {
-			case FinalVariable.CREATEUSER:
-				break;
-			case FinalVariable.LOGINUSER:
-				break;
-			case FinalVariable.CREATERROOM:
-				writeRoomCount(roomId);
-				break;
-			case FinalVariable.INSERTROOM:
-				break;
-			case FinalVariable.SENDMESSAGE:
-				sendMessage(roomId, Utils.formattingUserMessage(instruction, userId, userSendedMessage));
-				break;
-			case FinalVariable.GETROOMLIST:
-				break;
-			case FinalVariable.GETROOMHISTORY:
-				getReadHistory(userId, roomId, roomHistoryPage);
-				break;
-			default:
-				break;
-			}
+				case FinalVariable.CREATEUSER:
+					break;
+				case FinalVariable.LOGINUSER:
+					break;
+				case FinalVariable.CREATERROOM:
+					writeRoomCount(roomId);
+					break;
+				case FinalVariable.INSERTROOM:
+					break;
+				case FinalVariable.SENDMESSAGE:
+					writeSendMessage(roomId, Utils.formattingUserMessage(instruction, userId, userSendedMessage));
+					break;
+				case FinalVariable.GETROOMLIST:
+					break;
+				case FinalVariable.GETROOMHISTORY:
+					readRoomHistory(userId, roomId, roomHistoryPage);
+					break;
+				default:
+					break;
+				}
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		} catch (ArrayIndexOutOfBoundsException e){
@@ -92,18 +100,10 @@ public class FileManager implements Runnable {
 		}
 	}
 
-	private void keepStream(long roomId, RandomAccessFile randomAccessFile) {
-		randomAccessFileMap.put(roomId, randomAccessFile);
-	}
-	
 	private void closeStream(long roomId) {
-		try {
-			if(randomAccessFileMap.containsKey(roomId)) {
-				randomAccessFileMap.get(roomId).close();
-				randomAccessFileMap.remove(roomId);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		if(printWriterMap.containsKey(roomId)) {
+			printWriterMap.get(roomId).close();
+			printWriterMap.remove(roomId);
 		}
 	}
 
@@ -114,63 +114,91 @@ public class FileManager implements Runnable {
 		leastRecentlyUsedSet.add(roomId);
 	}
 
-	private void insertFileStream(long roomId, RandomAccessFile randomAccessFile) {
+	private void insertFileStream(long roomId, PrintWriter printWriter) {
 		if(leastRecentlyUsedSet.size() >= FinalVariable.MAXSIZEFILESTREAM) {
 			long leastRecentlyUsedRoodId = leastRecentlyUsedSet.iterator().next();
 			leastRecentlyUsedSet.remove(leastRecentlyUsedRoodId);
 			closeStream(leastRecentlyUsedRoodId);
 		}
 		
-		checkUseFileStream(roomId);
-		keepStream(roomId, randomAccessFile);
+		keepStream(roomId, printWriter);
 	}
 	
-	private void getReadHistory(long userId, long roomId, int page) {
-		RandomAccessFile randomAccessFile = null;
+	private void keepStream(long roomId, PrintWriter printWriter) {
+		printWriterMap.put(roomId, printWriter);
+	}
+	
+	private void readRoomHistory(long userId, long roomId, long seekLinePoint) {
+		BufferedReader bufferedReader = null;
 		try {
-			if(!leastRecentlyUsedSet.contains(roomId)) 
-			{
-				randomAccessFile = new RandomAccessFile(getFilePath(roomId), "rw");
-				insertFileStream(roomId, randomAccessFile);	
+			if(!leastRecentlyUsedSet.contains(roomId)) {
+				File file = new File(getFilePath(roomId));
+				if(!file.exists()) {
+					System.err.println("create file");
+					file.createNewFile();
+				}
+				PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8));
+				insertFileStream(roomId, printWriter);	
+			}
+			bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(getFilePath(roomId)), "utf-8"));
+			StringBuilder stringBuilder = new StringBuilder();
+			
+			long nextSeekLineEndPoint = -1;
+			long end = seekLinePoint;
+			if(seekLinePoint == 0) {
+				seekLinePoint = Long.MAX_VALUE;
+				end = seekLinePoint;
 			}
 			
-			randomAccessFile = randomAccessFileMap.get(roomId);
-			
-			long pos = randomAccessFile.length() - FinalVariable.BYTESPERPAGE * (page + 1);
-			randomAccessFile.seek(Math.max(pos, 0));
-			StringBuilder stringBuilder = new StringBuilder();
-
-			randomAccessFile.readLine();
+			int lineCount = 0;
+			ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<String>(FinalVariable.LINEPERPAGE);
 			while(true) {
-				String readLine = randomAccessFile.readLine();
-				if(readLine ==null)
+				String line = bufferedReader.readLine();
+				if(line == null)
 					break;
-				stringBuilder.append(readLine);
+				if(queue.size() >= FinalVariable.LINEPERPAGE)
+					queue.poll();
+				queue.add(line);
+				
+				if(++lineCount == end)
+					break;
+			}
+			
+			nextSeekLineEndPoint = Math.max(lineCount - FinalVariable.LINEPERPAGE, -1);
+			
+			for (String string : queue) {
+				stringBuilder.append(string);
 				stringBuilder.append(FinalVariable.LINEDELEMITER);
 			}
+			
+			bufferedReader.close();
 			if(stringBuilder.length() <= 0)
 				return;
 			
 			stringBuilder.setLength(stringBuilder.length() - 1);
-			server.sendRoomHistory(userId, roomId, stringBuilder.toString());
+			server.sendRoomHistory(userId, roomId, nextSeekLineEndPoint, stringBuilder.toString());
+			checkUseFileStream(roomId);		
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
 		}
 	}
 	
-	private void sendMessage(long roomId, String message) {
-		RandomAccessFile randomAccessFile = null;
+	private void writeSendMessage(long roomId, String message) {
+		PrintWriter printWriter = null;
 		try {
 			if(!leastRecentlyUsedSet.contains(roomId)) {
-				randomAccessFile = new RandomAccessFile(getFilePath(roomId), "rw");
-				insertFileStream(roomId, randomAccessFile);		
+				File file = new File(getFilePath(roomId));
+				if(!file.exists()) {
+					file.createNewFile();
+				}
+				printWriter = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
+				insertFileStream(roomId, printWriter);
 			}
-			randomAccessFile = randomAccessFileMap.get(roomId);
-			
-			//append
-			randomAccessFile.seek(randomAccessFile.length());
-			randomAccessFile.writeBytes(message + "\n");
+			printWriter = printWriterMap.get(roomId);
+			printWriter.append(message + FinalVariable.UTFLINEDELEMITER);
+			printWriter.flush();
+			checkUseFileStream(roomId);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
@@ -207,7 +235,7 @@ public class FileManager implements Runnable {
 				randomAccessManageFile = new RandomAccessFile(getManageFilePath(), "rw");
 			}
 			randomAccessManageFile.seek(0);
-			return randomAccessManageFile.readLine().trim();
+			return randomAccessManageFile.readUTF();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -222,7 +250,7 @@ public class FileManager implements Runnable {
 				randomAccessManageFile = new RandomAccessFile(getManageFilePath(), "rw");
 			}
 			randomAccessManageFile.seek(0);
-			randomAccessManageFile.writeBytes(String.valueOf(roomCount) + "\n");
+			randomAccessManageFile.writeUTF(String.valueOf(roomCount));
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

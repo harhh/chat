@@ -106,6 +106,14 @@ public class Server {
 	/*
 	 * Thread Safe
 	 */
+	public long createUser() {
+		long newUserId = autoIncreasedUserId.incrementAndGet();
+		if(newUserId == Long.MAX_VALUE) 
+			return FinalVariable.FAILEDCREATEUSER;
+		
+		return newUserId;
+	}
+	
 	public long createRoom(long prevRoomId, long userId, ServerThread serverThread) {
 		long newRoomId = autoIncreasedRoomId.incrementAndGet();
 		if(newRoomId == Long.MAX_VALUE) 
@@ -126,10 +134,10 @@ public class Server {
 		return FinalVariable.FAILEDINSERTROOM;
 	}
 	
-	public synchronized void sendRoomHistory(long userId, long roomId, String message) {
+	public synchronized void sendRoomHistory(long userId, long roomId, long seekPointer, String message) {
 		if (serverThreadMaps.containsKey(roomId) && serverThreadMaps.get(roomId).containsKey(userId)) {
 			ServerThread serverThead = serverThreadMaps.get(roomId).get(userId);
-			serverThead.sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, userId, roomId, 0, 0, message));
+			serverThead.sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, userId, 0, roomId, seekPointer, message));
 		}
 	}
 	
@@ -142,21 +150,12 @@ public class Server {
 		}
 	}
 	
-	public long createUser() {
-		long newUserId = autoIncreasedUserId.incrementAndGet();
-		if(newUserId == Long.MAX_VALUE) 
-			return FinalVariable.FAILEDCREATEUSER;
-		
-		return newUserId;
-	}
-
 	public synchronized long loginUser(ServerThread serverThread) {
 		long userId = createUser();
-		// 대기열 진입
 		registerServerThread(0, userId, serverThread);
 		return userId;
 	}
-	
+
 	public static void main(String[] args) throws IOException {
 		new Server(FinalVariable.PORT).start();
 	}

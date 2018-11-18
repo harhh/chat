@@ -11,7 +11,7 @@ public class Client {
 	private long userId = 0;
 	private long roomId= 0;
 	
-	private int historyPage = 0;
+	private long historySeekPointer = 0;
 	
 	private Socket socket = null;
 	
@@ -31,8 +31,8 @@ public class Client {
 		return socket;
 	}
 
-	public int getHistoryPage() {
-		return this.historyPage;
+	public long getHistorySeekPointer() {
+		return this.historySeekPointer;
 	}
 	
 	public void setUserId(long userId) {
@@ -43,11 +43,7 @@ public class Client {
 		this.roomId = roomId;
 	}
 	
-	public void setHistoryPage(int historyPage) {
-		this.historyPage = historyPage;
-	}
-	
-	public void increaseHistoryPage() {
-		this.historyPage++;
+	public void setHistorySeekPointer(long historySeekPointer) {
+		this.historySeekPointer = historySeekPointer;
 	}
 }

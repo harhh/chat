@@ -5,10 +5,10 @@ import java.awt.event.KeyListener;
 
 import utils.Delegate;
 
-public class ControllerTextArea implements KeyListener{
+public class ListenerTextArea implements KeyListener{
 	private Delegate delegate = null;
 	
-	public ControllerTextArea(Delegate delegate) {
+	public ListenerTextArea(Delegate delegate) {
 		this.delegate = delegate;
 	}
 

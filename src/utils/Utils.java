@@ -7,7 +7,7 @@ public class Utils {
 	    return strNum.matches("-?\\d+(\\.\\d+)?");
 	}
 	
-	public static String formattingProtocol(int instuction, long userId, long prevRoomId, long roomId, int historyPage, String message) {
+	public static String formattingProtocol(int instuction, long userId, long prevRoomId, long roomId, long historySeekPointer, String message) {
 		StringBuilder stringbuilder = new StringBuilder();
 		String[] protocols = new String[FinalVariable.PROTOCOLLENGH];
 
@@ -15,7 +15,7 @@ public class Utils {
 		protocols[FinalVariable.USERIDINDEX] = String.valueOf(userId);
 		protocols[FinalVariable.PREVROOMINDEX] = String.valueOf(prevRoomId);
 		protocols[FinalVariable.ROOMINDEX] = String.valueOf(roomId);
-		protocols[FinalVariable.ROOMHISTORYPAGEINDEX] = String.valueOf(historyPage);
+		protocols[FinalVariable.ROOMHISTORYPAGEINDEX] = String.valueOf(historySeekPointer);
 		protocols[FinalVariable.MESSAGEINDEX] = message;
 		
 		for(int i=0; i<FinalVariable.PROTOCOLLENGH; i++) {

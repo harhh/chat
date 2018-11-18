@@ -2,6 +2,7 @@ package server;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 
@@ -36,8 +37,8 @@ public class ServerThread implements Runnable {
 	
 	public synchronized void run() {
 		try {
-			bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			printWriter = new PrintWriter(socket.getOutputStream(), true);
+			bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "utf-8"));
+			printWriter = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "utf-8"), true);
 			String meesage = null;
 
 			while(!isStop) {
@@ -46,7 +47,6 @@ public class ServerThread implements Runnable {
 					doByProtocol(meesage);
 		        }   
 			}
-			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

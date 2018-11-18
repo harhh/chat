@@ -7,7 +7,7 @@ import javax.swing.border.EmptyBorder;
 
 import client.Client;
 import client.ClientThread;
-import controller.ControllerTextArea;
+import controller.ListenerTextArea;
 import controller.ViewControllerSingleton;
 import global.FinalVariable;
 import utils.Delegate;
@@ -160,10 +160,9 @@ public class Lobby extends JFrame {
 			}
 		});
 		
-		textAreaInput.addKeyListener(new ControllerTextArea(new Delegate() {
+		textAreaInput.addKeyListener(new ListenerTextArea(new Delegate() {
 			@Override
 			public void doDelegate(Object o) {
-				
 				String inputText = textAreaInput.getText().trim();
 				if(inputText != null && inputText.length() > 0)
 				{
@@ -176,6 +175,18 @@ public class Lobby extends JFrame {
 		btnRefreshRoomList.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				clientThread.getRoomList();
+			}
+		});
+		
+		scrollPane.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener() {
+			int scrollBarValue = 0;
+			@Override
+			public void adjustmentValueChanged(AdjustmentEvent e) {
+				int eValue = e.getAdjustable().getValue();
+				if(scrollBarValue != eValue && eValue == e.getAdjustable().getMinimum()) {
+					clientThread.getRoomHistory();
+				}
+				scrollBarValue = eValue;
 			}
 		});
 	}

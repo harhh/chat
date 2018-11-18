@@ -3,6 +3,7 @@ package client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 
@@ -29,8 +30,8 @@ public class ClientThread extends Thread{
 	public void run() {
 		try {
 			socket = client.getSocket();
-			bufferedReader = new BufferedReader(new InputStreamReader(client.getSocket().getInputStream()));
-			prrintWriter= new PrintWriter(client.getSocket().getOutputStream(), true);
+			bufferedReader = new BufferedReader(new InputStreamReader(client.getSocket().getInputStream(), "utf-8"));
+			prrintWriter= new PrintWriter(new OutputStreamWriter(client.getSocket().getOutputStream(), "utf-8"), true);
 			
 			String recievedMessage = null;
 			boolean isStop = false;
@@ -55,6 +56,7 @@ public class ClientThread extends Thread{
 			String[] protocol = message.split(FinalVariable.DELIMITER);
 			long userId = Long.parseLong(protocol[FinalVariable.USERIDINDEX]);
 			long roomId = Long.parseLong(protocol[FinalVariable.ROOMINDEX]);
+			long nextHistorySeekPointer = Long.parseLong(protocol[FinalVariable.ROOMHISTORYPAGEINDEX]);
 			
 			switch (Integer.parseInt(protocol[FinalVariable.INSTRUCTIONINDEX])) {
 			case FinalVariable.CREATEUSER:
@@ -83,10 +85,9 @@ public class ClientThread extends Thread{
 				break;
 			case FinalVariable.GETROOMHISTORY:
 				System.out.println("GETROOMHISTORY handler");
-				getRoomHistoryHandler(Utils.formattingView(protocol));
+				getRoomHistoryHandler(Utils.formattingView(protocol), nextHistorySeekPointer);
 				break;
-			
-	
+				
 			default:
 				break;
 			}
@@ -115,8 +116,7 @@ public class ClientThread extends Thread{
 		}
 		client.setUserId(userId);
 		ViewControllerSingleton.getInstance().createPopupConfirm("로그인하였습니다. (" + userId + ")", null, lobby);
-		
-		
+	
 	}
 	
 	private void createRoomHandler(long roomId) {
@@ -135,7 +135,7 @@ public class ClientThread extends Thread{
 			return;
 		}
 		client.setRoomId(roomId);
-		client.setHistoryPage(0);
+		client.setHistorySeekPointer(0);
 		
 		ViewControllerSingleton.getInstance().createPopupConfirm("방에 입장하였습니다..  (" + roomId + ")", null, lobby);
 		ViewControllerSingleton.getInstance().clearTextArea(lobby);
@@ -151,9 +151,9 @@ public class ClientThread extends Thread{
 		ViewControllerSingleton.getInstance().refreshRoomList(lobby, message);
 	}
 	
-	public void getRoomHistoryHandler(String message) {
-		client.increaseHistoryPage();
-		ViewControllerSingleton.getInstance().appendInTextArea(lobby, message);
+	public void getRoomHistoryHandler(String message, long nextHistorySeekPointer) {
+		client.setHistorySeekPointer(nextHistorySeekPointer);
+		ViewControllerSingleton.getInstance().appendFrontInTextArea(lobby, message);
 	}
 	
 	
@@ -178,7 +178,9 @@ public class ClientThread extends Thread{
 	}
 	
 	public void getRoomHistory() {
-		sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, client.getUserId(), 0, client.getRoomId(), client.getHistoryPage(), null));
+		if(client.getHistorySeekPointer() != -1) 
+			sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMHISTORY, client.getUserId(), 0, client.getRoomId(), client.getHistorySeekPointer(), null));
+		
 	}
 	
 	

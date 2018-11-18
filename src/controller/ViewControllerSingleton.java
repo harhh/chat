@@ -3,8 +3,8 @@ package controller;
 import java.awt.Component;
 
 import javax.swing.JScrollBar;
-import javax.swing.JTextArea;
 
+import global.FinalVariable;
 import ui.Lobby;
 import ui.PopupConfirm;
 import utils.Delegate;
@@ -22,16 +22,21 @@ public class ViewControllerSingleton {
     
     public void clearTextArea(Lobby lobby) {
     	lobby.getTextArea().setText("");
-    	JScrollBar scrollbar = lobby.getScrollPane().getVerticalScrollBar();
-    	scrollbar.setValue(scrollbar.getMaximum());
     }
     
     public void appendInTextArea(Lobby lobby, String message) {
     	lobby.getTextArea().append(message);
-    	lobby.getTextArea().append("\n");
+    	lobby.getTextArea().append(FinalVariable.UTFLINEDELEMITER);
 
     	JScrollBar scrollbar = lobby.getScrollPane().getVerticalScrollBar();
     	scrollbar.setValue(scrollbar.getMaximum());
+    }
+    
+    public void appendFrontInTextArea(Lobby lobby, String message) {
+    	StringBuilder stringBuilder = new StringBuilder(message);
+    	stringBuilder.append("\n");
+    	stringBuilder.append(lobby.getTextArea().getText());
+    	lobby.getTextArea().setText(stringBuilder.toString());
     }
     
     public void refreshRoomList(Lobby lobby, String message) {
