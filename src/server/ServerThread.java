@@ -124,7 +124,7 @@ public class ServerThread implements Runnable {
 	}
 	
 	private void broadCastInRoom(long roomId, String message) {
-		server.writeFile(message, this);
+		fileTaskRequest(message);
 		server.broadCastingInRoom(roomId, message);
 	}
 	

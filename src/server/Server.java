@@ -24,7 +24,7 @@ public class Server {
 	public AtomicLong autoIncreasedRoomId = new AtomicLong(0);
 	public AtomicLong autoIncreasedUserId = new AtomicLong(0);
 
-	// Warning. only use in thread safe
+	// Warning. use in thread safe
 	public HashMap<Long, HashMap<Long, ServerThread>> serverThreadMaps = null;
 
 	boolean isStop = false;
@@ -74,10 +74,6 @@ public class Server {
 	public void autoIncreaseRoomId(long roomCount) {
 		autoIncreasedRoomId.set(roomCount);
 	}
-
-	public void writeFile(String message, ServerThread serverThread){
-		serverThread.fileTaskRequest(message);
-	}
 	
 	// synchronized
 	// can use ReadWriteLock etc..
@@ -85,7 +81,6 @@ public class Server {
 		if (serverThreadMaps.containsKey(roomId)) {
 			HashMap<Long, ServerThread> serverThreadMap = serverThreadMaps.get(roomId);
 			serverThreadMap.forEach((k, v) -> {
-				System.out.println(message + roomId + "broad");
 				v.sendMessage(message);
 			});
 		}
@@ -121,7 +116,6 @@ public class Server {
 		
 		unRegisterServerThread(prevRoomId, userId);
 		registerServerThread(newRoomId, userId, serverThread);
-		System.out.println("create room : " + newRoomId + "by user id(" + userId + ")");
 		return newRoomId;
 	}
 	
@@ -142,9 +136,7 @@ public class Server {
 	}
 	
 	public synchronized void sendRoomCount(long userId, long roomId, String message) {
-		System.out.println("sendRoomCount:");
 		if (serverThreadMaps.containsKey(roomId) && serverThreadMaps.get(roomId).containsKey(userId)) {
-			System.out.println("sendRoomCount:2");
 			ServerThread serverThead = serverThreadMaps.get(roomId).get(userId);
 			serverThead.sendMessage(Utils.formattingProtocol(FinalVariable.GETROOMLIST, userId, roomId, 0, 0, message));
 		}

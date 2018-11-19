@@ -164,7 +164,7 @@ public class FileManager implements Runnable {
 					break;
 			}
 			
-			nextSeekLineEndPoint = Math.max(lineCount - FinalVariable.LINEPERPAGE, -1);
+			nextSeekLineEndPoint = lineCount <= FinalVariable.LINEPERPAGE ? -1 : lineCount - FinalVariable.LINEPERPAGE;
 			
 			for (String string : queue) {
 				stringBuilder.append(string);
